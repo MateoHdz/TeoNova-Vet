@@ -1,4 +1,6 @@
-# 🐾 VetPOS — Mrmax Veterinaria
+# 🐾 TeoNova-Vet
+
+Este es el primer desarrollo de TeoNova para la gestión de inventarios, enfocado en las necesidades de veterinarias.
 
 Sistema POS completo para veterinaria: ventas, inventario, clientes, mascotas, servicios y reportes.
 
@@ -36,3 +38,4 @@ cd frontend && npm install && npm run dev
 
 Abre → http://localhost:5173  
 Login → admin@veterinaria.com / Admin1234!
+
