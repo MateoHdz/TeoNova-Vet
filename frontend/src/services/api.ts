@@ -109,7 +109,17 @@ export const notificationsApi = {
 
 // ── Users ─────────────────────────────────────────────────────
 export const usersApi = {
-  list: () => api.get('/users').then(r => r.data),
+  // Clinic-scoped (admin)
+  list:    ()                          => api.get('/users').then(r => r.data),
+  create:  (data: any)                 => api.post('/users', data).then(r => r.data),
+  update:  (id: number, data: any)     => api.put(`/users/${id}`, data).then(r => r.data),
+  suspend: (id: number)                => api.delete(`/users/${id}`).then(r => r.data),
+  // Superadmin-only
+  listGlobal:      ()                  => api.get('/users/global/all').then(r => r.data),
+  resetPassword:   (id: number, password: string) =>
+    api.patch(`/users/${id}/password`, { password }).then(r => r.data),
+  permanentDelete: (id: number)        => api.delete(`/users/${id}/permanent`).then(r => r.data),
+  activate:        (id: number)        => api.put(`/users/${id}`, { isActive: true }).then(r => r.data),
 }
 
 // ── Clinics (superadmin only) ─────────────────────────────────

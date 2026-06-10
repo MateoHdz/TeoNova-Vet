@@ -5,10 +5,20 @@ Este es el primer desarrollo de TeoNova para la gestión de inventarios, enfocad
 Sistema POS completo para veterinaria: ventas, inventario, clientes, mascotas, servicios y reportes.
 
 ## Requisitos
-- Node.js v18+
-- XAMPP (MySQL)
+- Node.js v18+ **o** Docker Desktop
+- MySQL (XAMPP local, o MySQL en Docker)
 
-## Instalación
+## Docker (recomendado)
+
+```powershell
+copy .env.docker.example .env.docker
+docker compose --env-file .env.docker up -d --build
+docker compose --env-file .env.docker --profile setup run --rm setup-admin
+```
+
+→ http://localhost · Guía completa: [DOCKER.md](./DOCKER.md)
+
+## Instalación manual (sin Docker)
 
 ### 1. Base de datos
 - Abre phpMyAdmin → crea DB `veterinaria_pos` → importa `database/schema.sql`

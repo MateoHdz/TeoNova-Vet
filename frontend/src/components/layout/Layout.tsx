@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ShoppingCart, Package, Users, PawPrint,
   Scissors, BarChart2, Settings, Bell, Search, LogOut,
   ChevronDown, Calendar, X, Menu, Building2, Receipt,
-  Shield, TrendingDown
+  Shield, TrendingDown, ShieldCheck
 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { notificationsApi } from '../../services/api'
@@ -41,8 +41,9 @@ const CLINIC_ADMIN_NAV = [
   { to: '/settings', icon: Settings,  label: 'Configuración' },
 ]
 const SUPER_NAV = [
-  { to: '/',      icon: LayoutDashboard, label: 'Resumen',  exact: true },
-  { to: '/super', icon: Building2,       label: 'Clínicas'              },
+  { to: '/',          icon: LayoutDashboard, label: 'Resumen',  exact: true },
+  { to: '/super',     icon: Building2,       label: 'Clínicas'              },
+  { to: '/security',  icon: ShieldCheck,     label: 'Seguridad'             },
 ]
 
 export default function Layout() {

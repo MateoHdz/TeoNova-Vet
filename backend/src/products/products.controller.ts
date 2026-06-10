@@ -27,7 +27,18 @@ export class ProductsController {
   update(@Param('id') id: string, @Body() body: any, @ClinicId() cid: number) { return this.service.update(+id, cid, body); }
   @Post(':id/stock')
   adjustStock(@Param('id') id: string, @Body() body: any, @CurrentUser() user: any) {
-    return this.service.adjustStock(+id, body.quantity, body.type, user.userId, body.notes, undefined, undefined, user.clinicId);
+    return this.service.adjustStock(
+      +id,
+      body.quantity,
+      body.type,
+      user.userId,
+      body.notes,
+      undefined,
+      undefined,
+      user.clinicId,
+      body.newPurchasePrice ? Number(body.newPurchasePrice) : undefined,
+      body.newSalePrice     ? Number(body.newSalePrice)     : undefined,
+    );
   }
   @Delete(':id')
   @UseGuards(RolesGuard) @Roles('admin','superadmin')

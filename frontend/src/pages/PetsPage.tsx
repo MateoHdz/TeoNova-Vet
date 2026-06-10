@@ -64,9 +64,16 @@ export default function PetsPage() {
         <button onClick={openCreate} className="btn-green"><Plus size={15}/> Registrar mascota</button>
       </div>
 
-      <div style={{ position:'relative', maxWidth:420, marginBottom:24 }}>
-        <Search size={14} style={{ position:'absolute', left:11, top:'50%', transform:'translateY(-50%)', color:'var(--text3)' }}/>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar mascota o raza..." style={{ paddingLeft:34 }}/>
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 24 }}>
+        <div className="premium-search-wrapper" style={{ maxWidth: 480 }}>
+          <Search size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar mascota por nombre o raza..."
+            className="premium-search-input"
+          />
+        </div>
       </div>
 
       {/* Grid */}

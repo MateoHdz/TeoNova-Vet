@@ -32,11 +32,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       );
     }
 
+    const isDev = process.env.NODE_ENV !== 'production';
     response.status(status).json({
       statusCode: status,
       message:    Array.isArray(message) ? message[0] : message,
       timestamp:  new Date().toISOString(),
-      path:       request.url,
+      ...(isDev && { path: request.url }),
     });
   }
 }

@@ -60,8 +60,10 @@ export default function InventoryPage() {
   const [stockModal, setStockModal] = useState<any>(null)
   
   // Stock adjustment states
-  const [stockQty, setStockQty] = useState(0)
-  const [stockNotes, setStockNotes] = useState('')
+  const [stockQty, setStockQty]           = useState(0)
+  const [stockNotes, setStockNotes]       = useState('')
+  const [stockNewPurchase, setStockNewPurchase] = useState<string>('')
+  const [stockNewSale, setStockNewSale]   = useState<string>('')
   const [bulkCalc, setBulkCalc] = useState(EMPTY_BULK_CALC)
   const [bulkSaleManual, setBulkSaleManual] = useState(false)
   const bulkSyncSkip = useRef(false)
@@ -140,12 +142,16 @@ export default function InventoryPage() {
       await productsApi.adjustStock(stockModal.id, { 
         quantity: stockQty, 
         type, 
-        notes: stockNotes || undefined 
+        notes: stockNotes || undefined,
+        ...(type === 'in' && stockNewPurchase ? { newPurchasePrice: parseDecimalInput(stockNewPurchase) } : {}),
+        ...(type === 'in' && stockNewSale     ? { newSalePrice:     parseDecimalInput(stockNewSale)     } : {}),
       })
-      toast.success('El stock se ha actualizado correctamente')
+      toast.success('Stock actualizado correctamente' + (type === 'in' && (stockNewPurchase || stockNewSale) ? ' · Precios actualizados' : ''))
       setStockModal(null)
       setStockQty(0)
       setStockNotes('')
+      setStockNewPurchase('')
+      setStockNewSale('')
       load()
     } catch (e: any) { 
       toast.error(e.response?.data?.message || 'Error al ajustar el inventario') 
@@ -480,9 +486,12 @@ export default function InventoryPage() {
                            <span style={{ 
                             fontWeight: 800, 
                             fontSize: 14.5, 
-                            color: isOutOfStock ? 'var(--out)' : isLowStock ? '#d97706' : 'var(--text)' 
+                            color: isOutOfStock ? 'var(--out)' : isLowStock ? '#d97706' : 'var(--text)',
                           }}>
-                            {Number(p.stock).toLocaleString('es-CO', { maximumFractionDigits: 3 })} <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}>{p.isBulk ? (p.saleUnit || 'kg') : (p.unit || 'uds')}</span>
+                             {p.isBulk
+                               ? Number(p.stock).toLocaleString('es-CO', { maximumFractionDigits: 3 })
+                               : Math.round(Number(p.stock)).toLocaleString('es-CO')
+                             } <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)' }}>{p.isBulk ? (p.saleUnit || 'kg') : (p.unit || 'uds')}</span>
                           </span>
                           {p.isBulk && (
                             <span style={{ 
@@ -494,7 +503,7 @@ export default function InventoryPage() {
                           
                           {/* Stock adjustment shortcut button */}
                           <button 
-                            onClick={() => { setStockModal(p); setStockQty(0) }}
+                            onClick={() => { setStockModal(p); setStockQty(0); setStockNotes(''); setStockNewPurchase(''); setStockNewSale('') }}
                             style={{ 
                               fontSize: 10, 
                               fontWeight: 700, 
@@ -524,7 +533,7 @@ export default function InventoryPage() {
 
                     {/* Minimum stock threshold */}
                     <td style={{ padding: '14px 16px', color: 'var(--text2)', fontSize: 13 }}>
-                      🛡️ {p.minStock} {p.isBulk ? (p.saleUnit || 'kg') : (p.unit || 'uds')}
+                      🛡️ {p.isBulk ? Number(p.minStock).toLocaleString('es-CO', { maximumFractionDigits: 3 }) : Math.round(Number(p.minStock)).toLocaleString('es-CO')} {p.isBulk ? (p.saleUnit || 'kg') : (p.unit || 'uds')}
                     </td>
 
                     {/* Purchase Price */}
@@ -1034,31 +1043,89 @@ export default function InventoryPage() {
               <div style={{ fontSize: 11, color: 'var(--text2)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 4 }}>Producto Seleccionado</div>
               <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--text)' }}>{stockModal.name}</div>
               <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
-                Stock actual: <strong>{stockModal.stock}</strong> {stockModal.unit || 'uds'}
+                Stock actual: <strong>
+                  {stockModal.isBulk
+                    ? Number(stockModal.stock).toLocaleString('es-CO', { maximumFractionDigits: 3 })
+                    : Math.round(Number(stockModal.stock)).toLocaleString('es-CO')
+                  }
+                </strong> {stockModal.isBulk ? (stockModal.saleUnit || 'kg') : (stockModal.unit || 'uds')}
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Quantity */}
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Cantidad a ajustar</label>
-                <input 
-                  type="number" 
-                  value={stockQty || ''} 
-                  onChange={e => setStockQty(Math.max(0, Number(e.target.value)))} 
-                  min={1} 
-                  placeholder="Ingresa cantidad..."
-                />
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>Cantidad a ajustar</label>
+                <div className="premium-search-wrapper" style={{ minWidth: 'unset' }}>
+                  <input 
+                    type="number"
+                    className="premium-search-input"
+                    style={{ paddingLeft: '14px' }}
+                    value={stockQty || ''} 
+                    onChange={e => setStockQty(Math.max(0, Number(e.target.value)))} 
+                    min={1} 
+                    placeholder="Ingresa cantidad..."
+                  />
+                </div>
               </div>
               
               {/* Notes */}
               <div>
-                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 4 }}>Concepto / Motivo</label>
-                <input 
-                  value={stockNotes} 
-                  onChange={e => setStockNotes(e.target.value)} 
-                  placeholder="Ej. Compra a proveedor, mercadería dañada..."
-                />
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>Concepto / Motivo</label>
+                <div className="premium-search-wrapper" style={{ minWidth: 'unset' }}>
+                  <SlidersHorizontal size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
+                  <input
+                    className="premium-search-input"
+                    value={stockNotes} 
+                    onChange={e => setStockNotes(e.target.value)} 
+                    placeholder="Ej. Compra a proveedor, avería, devolución..."
+                  />
+                </div>
+              </div>
+
+              {/* Price update — only for ENTRADA */}
+              <div style={{
+                borderTop: '1.5px dashed var(--border)',
+                paddingTop: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <TrendingUp size={13} color="#d97706" />
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', letterSpacing: '.05em' }}>
+                    Actualizar precios al recibir mercancía (solo +Entrada)
+                  </span>
+                </div>
+                <p style={{ fontSize: 11.5, color: 'var(--text3)', marginBottom: 2 }}>
+                  Deja en blanco para conservar los precios actuales.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>Nuevo precio de compra</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="premium-search-input"
+                      style={{ paddingLeft: '12px' }}
+                      value={stockNewPurchase}
+                      onChange={e => setStockNewPurchase(e.target.value)}
+                      placeholder={`Actual: ${fmtMoney(Number(stockModal.purchasePrice))}`}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', display: 'block', marginBottom: 5 }}>Nuevo precio de venta</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className="premium-search-input"
+                      style={{ paddingLeft: '12px' }}
+                      value={stockNewSale}
+                      onChange={e => setStockNewSale(e.target.value)}
+                      placeholder={`Actual: ${fmtMoney(Number(stockModal.salePrice))}`}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Reactive Stock Forecast Preview */}
@@ -1083,10 +1150,10 @@ export default function InventoryPage() {
                         <span style={{ fontSize: 11, color: 'var(--text2)' }}>Sumará al inventario</span>
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{stockModal.stock}</span>
+                        <span>{stockModal.isBulk ? Number(stockModal.stock).toLocaleString('es-CO',{maximumFractionDigits:3}) : Math.round(Number(stockModal.stock))}</span>
                         <ArrowRight size={14} style={{ color: 'var(--green)' }} />
                         <span style={{ color: 'var(--green-dark)', fontSize: 15, fontWeight: 850 }}>
-                          +{stockQty} &rarr; {stockModal.stock + stockQty}
+                          +{stockQty} &rarr; {stockModal.isBulk ? (Number(stockModal.stock)+stockQty).toLocaleString('es-CO',{maximumFractionDigits:3}) : Math.round(Number(stockModal.stock))+stockQty}
                         </span>
                       </div>
                     </div>
@@ -1105,10 +1172,10 @@ export default function InventoryPage() {
                         <span style={{ fontSize: 11, color: 'var(--text2)' }}>Restará al inventario</span>
                       </div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span>{stockModal.stock}</span>
+                        <span>{stockModal.isBulk ? Number(stockModal.stock).toLocaleString('es-CO',{maximumFractionDigits:3}) : Math.round(Number(stockModal.stock))}</span>
                         <ArrowRight size={14} style={{ color: 'var(--out)' }} />
                         <span style={{ color: 'var(--out)', fontSize: 15, fontWeight: 850 }}>
-                          -{stockQty} &rarr; {Math.max(0, stockModal.stock - stockQty)}
+                          -{stockQty} &rarr; {stockModal.isBulk ? Math.max(0,Number(stockModal.stock)-stockQty).toLocaleString('es-CO',{maximumFractionDigits:3}) : Math.max(0,Math.round(Number(stockModal.stock))-stockQty)}
                         </span>
                       </div>
                     </div>

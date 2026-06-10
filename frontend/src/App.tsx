@@ -15,6 +15,7 @@ import ReportsPage from './pages/ReportsPage'
 import UsersPage from './pages/UsersPage'
 import SettingsPage from './pages/SettingsPage'
 import SuperAdminPage from './pages/SuperAdminPage'
+import SecurityPage from './pages/SecurityPage'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = useAuthStore(s => s.token)
@@ -51,6 +52,7 @@ export default function App() {
         <Route path="users"        element={<RequireAdmin><UsersPage /></RequireAdmin>} />
         <Route path="settings"     element={<RequireAdmin><SettingsPage /></RequireAdmin>} />
         <Route path="super"        element={<RequireSuperAdmin><SuperAdminPage /></RequireSuperAdmin>} />
+        <Route path="security"     element={<RequireSuperAdmin><SecurityPage /></RequireSuperAdmin>} />
       </Route>
     </Routes>
   )
