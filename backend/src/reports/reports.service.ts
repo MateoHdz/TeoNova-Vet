@@ -35,17 +35,9 @@ export class ReportsService {
     return `${y}-${pad(mo)}-${pad(day)}`;
   }
 
-  /** ISO sin zona (hora de pared) para que el frontend no aplique offset extra */
+  /** Return standard ISO so the frontend handles timezone correctly */
   private toLocalISO(d: Date): string {
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const legacy = this.useLegacyUtcClock();
-    const y = legacy ? d.getUTCFullYear() : d.getFullYear();
-    const mo = legacy ? d.getUTCMonth() + 1 : d.getMonth() + 1;
-    const day = legacy ? d.getUTCDate() : d.getDate();
-    const h = legacy ? d.getUTCHours() : d.getHours();
-    const mi = legacy ? d.getUTCMinutes() : d.getMinutes();
-    const s = legacy ? d.getUTCSeconds() : d.getSeconds();
-    return `${y}-${pad(mo)}-${pad(day)}T${pad(h)}:${pad(mi)}:${pad(s)}`;
+    return d.toISOString();
   }
 
   private toNumber(v: any): number {

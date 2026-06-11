@@ -26,7 +26,7 @@ function useIsMobile() {
 
 const CLINIC_NAV = [
   { to: '/',            icon: LayoutDashboard, label: 'Dashboard',    exact: true },
-  { to: '/pos',         icon: ShoppingCart,    label: 'Ventas (POS)'              },
+  { to: '/pos',         icon: ShoppingCart,    label: 'Ventas'              },
   { to: '/sales',       icon: Receipt,         label: 'Historial'                 },
   { to: '/inventory',   icon: Package,         label: 'Inventario'                },
   { to: '/customers',   icon: Users,           label: 'Clientes'                  },
@@ -180,10 +180,10 @@ export default function Layout() {
           )}
 
           {!isMobile && !superAdmin && (
-            <div style={{ flex: 1, position: 'relative', maxWidth: 380 }}>
-              <Search size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)' }} />
-              <input type="text" placeholder="Buscar productos, clientes..."
-                style={{ paddingLeft: 34, background: 'var(--surface2)', border: '1.5px solid var(--border)' }} />
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                ¡Hola, <span style={{ color: 'var(--green-dark)' }}>{user?.name?.split(' ')[0]}</span>! 👋
+              </div>
             </div>
           )}
 

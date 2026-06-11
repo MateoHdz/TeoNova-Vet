@@ -104,23 +104,12 @@ export default function SalesPage() {
   const totalExpenses = movements.reduce((s, m) => s + Number(m.exit || 0), 0)
   const netUtility = totalIncomes - totalExpenses
 
-  // Hora de pared: el API envía ISO sin Z (hora local). Legacy con Z usa componentes UTC.
+  // Formato local basado en ISO standard
   const formatLocalTime = (isoString?: string): string => {
     if (!isoString) return '--:--'
     try {
-      const isUtcIso = /Z$/i.test(isoString) || /[+-]\d{2}:?\d{2}$/.test(isoString)
       const d = new Date(isoString)
       const opts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true }
-      if (isUtcIso) {
-        const wall = new Date(
-          d.getUTCFullYear(),
-          d.getUTCMonth(),
-          d.getUTCDate(),
-          d.getUTCHours(),
-          d.getUTCMinutes(),
-        )
-        return wall.toLocaleTimeString('es-CO', opts)
-      }
       return d.toLocaleTimeString('es-CO', opts)
     } catch {
       return '--:--'

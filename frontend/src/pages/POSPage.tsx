@@ -242,6 +242,10 @@ export default function POSPage() {
         .filter(Boolean)
     )
 
+  const updatePrice = (key: string, newPrice: number) => {
+    setCart((prev) => prev.map((i) => (i.key === key ? { ...i, unitPrice: newPrice } : i)))
+  }
+
   const subtotal = cart.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
   const total = Math.max(0, subtotal - discount)
   const change = paymentMethod === 'cash' && cashReceived >= total ? cashReceived - total : 0
@@ -328,7 +332,7 @@ export default function POSPage() {
         {/* Header Title */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>Ventas POS</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>Ventas</h1>
             <p style={{ color: 'var(--text2)', fontSize: 13, marginTop: 2, textTransform: 'capitalize' }}>
               {format(new Date(), "EEEE d 'de' MMMM, yyyy", { locale: es })}
             </p>
@@ -830,9 +834,21 @@ export default function POSPage() {
                     </button>
                   </div>
 
-                  <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text)' }}>
-                    {fmt(item.quantity * item.unitPrice)}
-                  </span>
+                  {item.itemType === 'service' ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 13, color: 'var(--text3)' }}>$</span>
+                      <input 
+                        type="number" 
+                        value={item.unitPrice || ''} 
+                        onChange={(e) => updatePrice(item.key, Number(e.target.value))}
+                        style={{ width: 80, textAlign: 'right', fontSize: 13.5, fontWeight: 800, color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 6px', background: 'var(--surface)' }}
+                      />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '13.5px', fontWeight: 800, color: 'var(--text)' }}>
+                      {fmt(item.quantity * item.unitPrice)}
+                    </span>
+                  )}
                 </div>
               </div>
             ))

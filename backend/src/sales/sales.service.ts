@@ -76,6 +76,7 @@ export class SalesService {
         subtotal, discount, total: subtotal - discount,
         notes: dto.notes || null,
         status: 'completed',
+        soldAt: new Date(),
         items: saleItems as SaleItem[],
       });
       const saved = await manager.save(Sale, sale);
