@@ -31,16 +31,15 @@ export const authApi = {
 
 // ── Customers ─────────────────────────────────────────────────
 export const customersApi = {
-  list: (search?: string) => api.get('/customers', { params: { search } }).then(r => r.data),
+  list: (search?: string, page?: number, limit?: number) => api.get('/customers', { params: { search, page, limit } }).then(r => r.data),
   get: (id: number) => api.get(`/customers/${id}`).then(r => r.data),
   create: (data: any) => api.post('/customers', data).then(r => r.data),
   update: (id: number, data: any) => api.put(`/customers/${id}`, data).then(r => r.data),
   remove: (id: number) => api.delete(`/customers/${id}`).then(r => r.data),
 }
 
-// ── Pets ──────────────────────────────────────────────────────
 export const petsApi = {
-  list: (customerId?: number) => api.get('/pets', { params: { customerId } }).then(r => r.data),
+  list: (search?: string, customerId?: number, page?: number, limit?: number) => api.get('/pets', { params: { search, customerId, page, limit } }).then(r => r.data),
   create: (data: any) => api.post('/pets', data).then(r => r.data),
   update: (id: number, data: any) => api.put(`/pets/${id}`, data).then(r => r.data),
   remove: (id: number) => api.delete(`/pets/${id}`).then(r => r.data),
@@ -48,8 +47,9 @@ export const petsApi = {
 
 // ── Products ──────────────────────────────────────────────────
 export const productsApi = {
-  list: (search?: string, lowStock?: boolean) =>
-    api.get('/products', { params: { search, lowStock } }).then(r => r.data),
+  list: (search?: string, lowStock?: boolean, category?: string, page?: number, limit?: number) =>
+    api.get('/products', { params: { search, lowStock, category, page, limit } }).then(r => r.data),
+  summary: () => api.get('/products/summary').then(r => r.data),
   get: (id: number) => api.get(`/products/${id}`).then(r => r.data),
   create: (data: any) => api.post('/products', data).then(r => r.data),
   update: (id: number, data: any) => api.put(`/products/${id}`, data).then(r => r.data),

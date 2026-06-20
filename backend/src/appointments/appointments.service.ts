@@ -28,6 +28,27 @@ export class AppointmentsService {
     return qb.getMany();
   }
 
+  async findAllPaginated(clinicId: number, from: string | undefined, to: string | undefined, status: AppointmentStatus | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const qb = this.repo.createQueryBuilder('a')
+      .leftJoinAndSelect('a.customer','customer')
+      .leftJoinAndSelect('a.pet','pet')
+      .leftJoinAndSelect('a.service','service')
+      .leftJoinAndSelect('a.user','user')
+      .where('a.clinicId = :clinicId', { clinicId })
+      .orderBy('a.scheduledAt','ASC')
+      .skip(skip)
+      .take(limit);
+    if (from && to) {
+      const fromDate = from.includes('T') || from.includes('Z') ? new Date(from) : new Date(from);
+      const toDate = to.includes('T') || to.includes('Z') ? new Date(to) : new Date(to + 'T23:59:59');
+      qb.andWhere('a.scheduledAt BETWEEN :from AND :to', { from: fromDate, to: toDate });
+    }
+    if (status) qb.andWhere('a.status = :status', { status });
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findOne(id: number, clinicId: number) {
     const a = await this.repo.findOne({ where:{ id, clinicId }, relations:['customer','pet','service','user'] });
     if (!a) throw new NotFoundException('Cita no encontrada');

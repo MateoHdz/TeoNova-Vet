@@ -12,7 +12,7 @@ export class ProductsService {
     private dataSource: DataSource,
   ) {}
 
-  findAll(clinicId: number, search?: string, lowStock?: boolean): Promise<Product[]> {
+  findAll(clinicId: number, search?: string, lowStock?: boolean, category?: string): Promise<Product[]> {
     if (lowStock) {
       return this.repo.createQueryBuilder('p')
         .where('p.clinicId = :clinicId AND p.isActive = true AND p.stock <= p.minStock', { clinicId })
@@ -20,7 +20,33 @@ export class ProductsService {
     }
     const where: any = { clinicId, isActive: true };
     if (search) where.name = Like(`%${search}%`);
+    if (category && category !== 'Todas') where.category = category;
     return this.repo.find({ where, order: { name: 'ASC' } });
+  }
+
+  async findAllPaginated(clinicId: number, search: string | undefined, lowStock: boolean | undefined, category: string | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    if (lowStock) {
+      const qb = this.repo.createQueryBuilder('p')
+        .where('p.clinicId = :clinicId AND p.isActive = true AND p.stock <= p.minStock', { clinicId });
+      if (category && category !== 'Todas') qb.andWhere('p.category = :category', { category });
+      const [data, total] = await qb
+        .orderBy('p.stock', 'ASC')
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+      return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+    }
+    const where: any = { clinicId, isActive: true };
+    if (search) where.name = Like(`%${search}%`);
+    if (category && category !== 'Todas') where.category = category;
+    const [data, total] = await this.repo.findAndCount({
+      where,
+      order: { name: 'ASC' },
+      skip,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: number, clinicId?: number, manager?: EntityManager): Promise<Product> {
@@ -135,5 +161,24 @@ export class ProductsService {
     return this.repo.createQueryBuilder('p')
       .where('p.clinicId = :clinicId AND p.isActive = true AND p.stock <= p.minStock', { clinicId })
       .orderBy('p.stock', 'ASC').getMany();
+  }
+
+  async getSummary(clinicId: number) {
+    const result = await this.repo.createQueryBuilder('p')
+      .select('COUNT(p.id)', 'totalSKUs')
+      .addSelect('SUM(p.purchasePrice * p.stock)', 'totalPurchaseValuation')
+      .addSelect('SUM(p.salePrice * p.stock)', 'totalSaleValuation')
+      .addSelect('SUM(CASE WHEN p.stock > 0 AND p.stock <= p.minStock THEN 1 ELSE 0 END)', 'lowStockCount')
+      .addSelect('SUM(CASE WHEN p.stock <= 0 THEN 1 ELSE 0 END)', 'outOfStockCount')
+      .where('p.clinicId = :clinicId AND p.isActive = true', { clinicId })
+      .getRawOne();
+      
+    return {
+      totalSKUs: Number(result.totalSKUs || 0),
+      totalPurchaseValuation: Number(result.totalPurchaseValuation || 0),
+      totalSaleValuation: Number(result.totalSaleValuation || 0),
+      lowStockCount: Number(result.lowStockCount || 0),
+      outOfStockCount: Number(result.outOfStockCount || 0)
+    };
   }
 }

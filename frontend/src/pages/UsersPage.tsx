@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Plus, Edit2, Trash2, UserCog } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import api from '../services/api'
 
 const EMPTY = { name:'', email:'', password:'', role:'employee' }
@@ -23,22 +23,30 @@ export default function UsersPage() {
   }
 
   const save = async () => {
-    if (!form.name||!form.email) { toast.error('Nombre y email requeridos'); return }
-    if (!editing&&!form.password) { toast.error('Contraseña requerida'); return }
+    const missing = []
+    if (!form.name) missing.push('Nombre completo')
+    if (!form.email) missing.push('Correo electrónico')
+    if (!editing && !form.password) missing.push('Contraseña')
+    if (missing.length > 0) { Alerts.validationError(missing); return }
+
     setLoading(true)
     try {
       const data: any = { name:form.name, email:form.email, role:form.role }
       if (form.password) data.password = form.password
       editing ? await api.put(`/users/${editing.id}`,data) : await api.post('/users',{...data,password:form.password})
-      toast.success(editing?'Usuario actualizado':'Usuario creado')
+      Alerts.success(editing?'Usuario actualizado':'Usuario creado')
       setShowModal(false); load()
-    } catch (e:any) { toast.error(e.response?.data?.message||'Error') }
+    } catch (e:any) { Alerts.error(e.response?.data?.message||'Error') }
     finally { setLoading(false) }
   }
 
   const remove = async (id: number) => {
-    if (!confirm('¿Desactivar este usuario?')) return
-    await api.delete(`/users/${id}`); toast.success('Usuario desactivado'); load()
+    if (!(await Alerts.confirm('¿Desactivar este usuario?', 'El usuario ya no podrá acceder al sistema'))) return
+    try {
+      await api.delete(`/users/${id}`)
+      Alerts.success('Usuario desactivado')
+      load()
+    } catch { Alerts.error('Error al desactivar') }
   }
 
   const initials = (name: string) => name?.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()||'U'

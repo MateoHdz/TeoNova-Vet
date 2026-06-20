@@ -2,7 +2,7 @@ import { Building2, Users, CreditCard, Bell, Shield, Palette, Save } from 'lucid
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../store/authStore'
 import { clinicsApi } from '../services/api'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 
 const sections = [
   { key:'info',    icon:Building2,  label:'Información del negocio', desc:'Nombre, dirección, NIT, contacto.', color:'#10b981', bg:'#ecfdf5' },
@@ -37,9 +37,9 @@ export default function SettingsPage() {
     setLoading(true)
     try {
       await clinicsApi.update(user.clinicId, form)
-      toast.success('Información guardada')
+      Alerts.success('Información guardada')
       setSaved(true); setTimeout(()=>setSaved(false),2500)
-    } catch { toast.error('Error al guardar') }
+    } catch { Alerts.error('Error al guardar') }
     finally { setLoading(false) }
   }
 

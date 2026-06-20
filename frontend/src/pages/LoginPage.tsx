@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { PawPrint, Eye, EyeOff } from 'lucide-react'
 import { authApi } from '../services/api'
 import { useAuthStore } from '../store/authStore'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 
 export default function LoginPage() {
   const [email,    setEmail]    = useState('')
@@ -24,7 +24,7 @@ export default function LoginPage() {
       navigate(data.user.role === 'superadmin' ? '/super' : '/')
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Credenciales incorrectas'
-      toast.error(Array.isArray(msg) ? msg[0] : msg)
+      Alerts.error(Array.isArray(msg) ? msg[0] : msg)
     } finally { setLoading(false) }
   }
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { customersApi, petsApi } from '../services/api'
 import { Plus, Search, Edit2, Eye, PawPrint, Phone, Mail, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
+import Pagination from '../components/Pagination'
 
 const fmt = (n: number) => new Intl.NumberFormat('es-CO', { style:'currency', currency:'COP', maximumFractionDigits:0 }).format(n)
 const EMPTY_C = { name:'', phone:'', email:'', notes:'' }
@@ -31,8 +32,17 @@ export default function CustomersPage() {
   const [petForm, setPetForm] = useState(EMPTY_P)
   const [loading, setLoading] = useState(false)
 
-  const load = () => customersApi.list(search).then(setCustomers)
-  useEffect(() => { load() }, [search])
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
+  const [total, setTotal] = useState(0)
+
+  const load = () => customersApi.list(search, page, limit).then((res: any) => {
+    setCustomers(res.data || [])
+    setTotal(res.total || 0)
+  })
+
+  useEffect(() => { setPage(1) }, [search, limit])
+  useEffect(() => { load() }, [search, page, limit])
 
   const openCreateCustomer = () => { setEditingCustomer(null); setCustomerForm(EMPTY_C); setShowCustomerModal(true) }
   const openEditCustomer = (c: any) => {
@@ -40,21 +50,35 @@ export default function CustomersPage() {
   }
 
   const saveCustomer = async () => {
-    if (!customerForm.name) { toast.error('Nombre requerido'); return }
+    const missing = []
+    if (!customerForm.name) missing.push('Nombre')
+    if (missing.length > 0) {
+      Alerts.validationError(missing)
+      return
+    }
+
     setLoading(true)
     try {
       editingCustomer ? await customersApi.update(editingCustomer.id,customerForm) : await customersApi.create(customerForm)
-      toast.success(editingCustomer?'Actualizado':'Registrado'); setShowCustomerModal(false); load()
-    } catch { toast.error('Error') } finally { setLoading(false) }
+      Alerts.success(editingCustomer ? 'Cliente actualizado' : 'Cliente registrado')
+      setShowCustomerModal(false); load()
+    } catch { Alerts.error('Error al guardar cliente') } finally { setLoading(false) }
   }
 
   const savePet = async () => {
-    if (!petForm.name) { toast.error('Nombre requerido'); return }
+    const missing = []
+    if (!petForm.name) missing.push('Nombre de la mascota')
+    if (missing.length > 0) {
+      Alerts.validationError(missing)
+      return
+    }
+
     setLoading(true)
     try {
       editingPet ? await petsApi.update(editingPet.id,petForm) : await petsApi.create({ ...petForm, customerId:showPetModal })
-      toast.success(editingPet?'Mascota actualizada':'Mascota registrada'); setShowPetModal(null); load()
-    } catch { toast.error('Error') } finally { setLoading(false) }
+      Alerts.success(editingPet ? 'Mascota actualizada' : 'Mascota registrada')
+      setShowPetModal(null); load()
+    } catch { Alerts.error('Error al guardar mascota') } finally { setLoading(false) }
   }
 
   return (
@@ -130,6 +154,14 @@ export default function CustomersPage() {
             {customers.length===0&&<tr><td colSpan={6} style={{ padding:'52px', textAlign:'center', color:'var(--text3)' }}>Sin clientes registrados</td></tr>}
           </tbody>
         </table>
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / limit)}
+          totalItems={total}
+          itemsPerPage={limit}
+          onPageChange={setPage}
+          onItemsPerPageChange={setLimit}
+        />
       </div>
 
       {/* Customer modal */}

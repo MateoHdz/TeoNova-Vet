@@ -12,11 +12,21 @@ export class ProductsController {
   constructor(private readonly service: ProductsService) {}
 
   @Get()
-  findAll(@ClinicId() cid: number, @Query('search') s?: string, @Query('lowStock') ls?: string) {
-    return this.service.findAll(cid, s, ls === 'true');
+  findAll(
+    @ClinicId() cid: number,
+    @Query('search') s?: string,
+    @Query('lowStock') ls?: string,
+    @Query('category') category?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    if (page && limit) return this.service.findAllPaginated(cid, s, ls === 'true', category, +page, +limit);
+    return this.service.findAll(cid, s, ls === 'true', category);
   }
   @Get('low-stock')
   getLowStock(@ClinicId() cid: number) { return this.service.getLowStock(cid); }
+  @Get('summary')
+  summary(@ClinicId() cid: number) { return this.service.getSummary(cid); }
   @Get(':id')
   findOne(@Param('id') id: string, @ClinicId() cid: number) { return this.service.findOne(+id, cid); }
   @Post()

@@ -5,7 +5,7 @@ import {
   ToggleLeft, ToggleRight, Edit2, X, CheckCircle2,
   AlertTriangle, Activity, ShieldOff
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -60,28 +60,40 @@ export default function SuperAdminPage() {
   }
 
   const save = async () => {
-    if (!form.name || !form.slug) { toast.error('Nombre y slug son requeridos'); return }
-    if (!editing && (!form.adminName || !form.adminEmail || !form.adminPassword)) {
-      toast.error('Datos del administrador requeridos'); return
+    const missing = []
+    if (!form.name) missing.push('Nombre')
+    if (!form.slug) missing.push('Slug')
+    
+    if (!editing) {
+      if (!form.adminName) missing.push('Nombre del admin')
+      if (!form.adminEmail) missing.push('Email del admin')
+      if (!form.adminPassword) missing.push('Contraseña inicial')
     }
+
+    if (missing.length > 0) { Alerts.validationError(missing); return }
+
     setLoading(true)
     try {
       if (editing) {
         await clinicsApi.update(editing.id, { name: form.name, slug: form.slug, email: form.email, phone: form.phone, address: form.address, nit: form.nit, plan: form.plan })
-        toast.success('Clínica actualizada')
+        Alerts.success('Clínica actualizada')
       } else {
         const result = await clinicsApi.create(form)
-        toast.success(`Clínica creada · Admin: ${result.admin.email}`)
+        Alerts.success(`Clínica creada · Admin: ${result.admin.email}`)
       }
       setShowModal(false); load()
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Error') }
+    } catch (e: any) { Alerts.error(e.response?.data?.message || 'Error') }
     finally { setLoading(false) }
   }
 
   const setStatus = async (c: any, active: boolean) => {
-    await (active ? clinicsApi.activate(c.id) : clinicsApi.suspend(c.id))
-    toast.success(active ? 'Clínica activada' : 'Clínica suspendida')
-    load()
+    try {
+      await (active ? clinicsApi.activate(c.id) : clinicsApi.suspend(c.id))
+      Alerts.success(active ? 'Clínica activada' : 'Clínica suspendida')
+      load()
+    } catch {
+      Alerts.error('Error al cambiar el estado')
+    }
   }
 
   const F = ({ label, k, type = 'text', placeholder = '' }: any) => (

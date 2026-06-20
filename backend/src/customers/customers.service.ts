@@ -13,6 +13,20 @@ export class CustomersService {
     return this.repo.find({ where, relations: ['pets'], order: { name: 'ASC' } });
   }
 
+  async findAllPaginated(clinicId: number, search: string | undefined, page: number, limit: number) {
+    const where: any = { clinicId, isActive: true };
+    if (search) where.name = Like(`%${search}%`);
+    const skip = (page - 1) * limit;
+    const [data, total] = await this.repo.findAndCount({
+      where,
+      relations: ['pets'],
+      order: { name: 'ASC' },
+      skip,
+      take: limit,
+    });
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findOne(id: number, clinicId: number): Promise<Customer> {
     const c = await this.repo.findOne({ where: { id, clinicId }, relations: ['pets'] });
     if (!c) throw new NotFoundException('Cliente no encontrado');

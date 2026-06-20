@@ -24,7 +24,8 @@ import {
   Phone,
   Info
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
+import Pagination from '../components/Pagination'
 import { format, addDays, subDays, isToday, parseISO } from 'date-fns'
 
 // Helper to format ISO datetime strings to local time in 12-hour AM/PM format
@@ -77,6 +78,9 @@ export default function AppointmentsPage() {
   const [loading, setLoading] = useState(false)
   const [filterStatus, setFilterStatus] = useState<string>('all')
 
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
+
   // WhatsApp notification modal
   const [whatsappModal, setWhatsappModal] = useState<{
     isOpen: boolean
@@ -104,13 +108,17 @@ export default function AppointmentsPage() {
   }, [selectedDate])
 
   useEffect(() => {
+    setPage(1)
+  }, [selectedDate, filterStatus, limit])
+
+  useEffect(() => {
     customersApi.list().then(setCustomers).catch(() => {})
     servicesApi.list().then(setServices).catch(() => {})
   }, [])
 
   const handleCustomerChange = (id: string) => {
     setForm((f: any) => ({ ...f, customerId: id, petId: '' }))
-    if (id) petsApi.list(Number(id)).then(setPets).catch(() => {})
+    if (id) petsApi.list(undefined, Number(id)).then(setPets).catch(() => {})
     else setPets([])
   }
 
@@ -139,15 +147,20 @@ export default function AppointmentsPage() {
       price: String(a.price || ''),
       notes: a.notes || '',
     })
-    if (a.customerId) petsApi.list(a.customerId).then(setPets).catch(() => {})
+    if (a.customerId) petsApi.list(undefined, a.customerId).then(setPets).catch(() => {})
     setShowModal(true)
   }
 
   const handleSave = async () => {
-    if (!form.serviceId || !form.scheduledAt) {
-      toast.error('Servicio y fecha son requeridos')
+    const missing = []
+    if (!form.serviceId) missing.push('Servicio')
+    if (!form.scheduledAt) missing.push('Fecha de la Cita')
+    
+    if (missing.length > 0) {
+      Alerts.validationError(missing)
       return
     }
+
     setLoading(true)
     try {
       const payload = {
@@ -160,11 +173,11 @@ export default function AppointmentsPage() {
       }
       if (editingId) await appointmentsApi.update(editingId, payload)
       else await appointmentsApi.create(payload)
-      toast.success(editingId ? 'Cita actualizada' : 'Cita agendada')
+      Alerts.success(editingId ? 'Cita actualizada' : 'Cita agendada')
       setShowModal(false)
       load()
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al guardar')
+      Alerts.error(e.response?.data?.message || 'Error al guardar')
     } finally {
       setLoading(false)
     }
@@ -173,7 +186,7 @@ export default function AppointmentsPage() {
   const handleStatusChange = async (id: number, status: string) => {
     try {
       await appointmentsApi.updateStatus(id, status)
-      toast.success('Estado de la cita actualizado')
+      Alerts.success('Estado de la cita actualizado')
 
       // Trigger WhatsApp modal when marked as Finalizado (done)
       if (status === 'done') {
@@ -194,15 +207,19 @@ export default function AppointmentsPage() {
       }
       load()
     } catch {
-      toast.error('Error al actualizar el estado')
+      Alerts.error('Error al actualizar el estado')
     }
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Cancelar esta cita?')) return
-    await appointmentsApi.remove(id)
-    toast.success('Cita cancelada')
-    load()
+    if (!(await Alerts.confirm('¿Cancelar esta cita?', 'Esta acción no se puede deshacer'))) return
+    try {
+      await appointmentsApi.remove(id)
+      Alerts.success('Cita cancelada')
+      load()
+    } catch {
+      Alerts.error('Error al cancelar la cita')
+    }
   }
 
   const sendWhatsapp = (phone: string, text: string) => {
@@ -217,6 +234,11 @@ export default function AppointmentsPage() {
     filterStatus === 'all'
       ? appointments
       : appointments.filter((a) => a.status === filterStatus)
+
+  const total = filtered.length
+  const paginatedAppointments = filtered
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
+    .slice((page - 1) * limit, page * limit)
 
   const stats = {
     total: appointments.length,
@@ -515,9 +537,7 @@ export default function AppointmentsPage() {
               </div>
 
               {/* Rows */}
-              {filtered
-                .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime())
-                .map((a: any) => {
+              {paginatedAppointments.map((a: any) => {
                   const cfg = STATUS_CONFIG[a.status] || STATUS_CONFIG.pending
                   const IconComp = cfg.icon
                   const timeStr = formatLocalTime(a.scheduledAt)
@@ -776,6 +796,16 @@ export default function AppointmentsPage() {
                   )
                 })}
             </div>
+          )}
+          {filtered.length > 0 && (
+            <Pagination
+              currentPage={page}
+              totalPages={Math.ceil(total / limit)}
+              totalItems={total}
+              itemsPerPage={limit}
+              onPageChange={setPage}
+              onItemsPerPageChange={setLimit}
+            />
           )}
         </div>
       </div>

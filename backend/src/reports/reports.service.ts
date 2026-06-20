@@ -222,9 +222,15 @@ export class ReportsService {
     // 1. Fetch sales
     const salesQuery = this.saleRepo
       .createQueryBuilder('s')
-      .leftJoinAndSelect('s.customer', 'customer')
-      .leftJoinAndSelect('s.user', 'user')
-      .leftJoinAndSelect('s.items', 'items')
+      .leftJoin('s.customer', 'customer')
+      .leftJoin('s.user', 'user')
+      .leftJoin('s.items', 'items')
+      .select([
+        's.id', 's.soldAt', 's.paymentMethod', 's.total', 's.notes',
+        'customer.id', 'customer.name', 'customer.phone',
+        'user.id', 'user.name',
+        'items.id', 'items.description', 'items.quantity'
+      ])
       .where(`s.clinic_id = :c AND s.status = 'completed' AND s.sold_at BETWEEN :f AND :t`, { c: clinicId, f, t });
 
     if (userId) {
@@ -237,7 +243,11 @@ export class ReportsService {
     // 2. Fetch expenses
     const expensesQuery = this.expenseRepo
       .createQueryBuilder('e')
-      .leftJoinAndSelect('e.user', 'user')
+      .leftJoin('e.user', 'user')
+      .select([
+        'e.id', 'e.date', 'e.createdAt', 'e.description', 'e.category', 'e.amount', 'e.notes',
+        'user.id', 'user.name'
+      ])
       .where(`e.clinic_id = :c AND e.date BETWEEN :from AND :to`, { c: clinicId, from, to });
 
     if (userId) {

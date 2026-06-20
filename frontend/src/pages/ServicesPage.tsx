@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { servicesApi } from '../services/api'
 import { Plus, Edit2, Trash2, Scissors, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import { useAuthStore } from '../store/authStore'
 import { Link } from 'react-router-dom'
 
@@ -32,20 +32,24 @@ export default function ServicesPage() {
   }
 
   const save = async () => {
-    if (!form.name) { toast.error('El nombre es requerido'); return }
+    if (!form.name) { Alerts.validationError(['Nombre']); return }
     setLoading(true)
     try {
       const payload = { ...form, basePrice: Number(form.basePrice||0) }
       editing ? await servicesApi.update(editing.id, payload) : await servicesApi.create(payload)
-      toast.success(editing ? 'Servicio actualizado' : 'Servicio creado')
+      Alerts.success(editing ? 'Servicio actualizado' : 'Servicio creado')
       setShowModal(false); load()
-    } catch { toast.error('Error al guardar') }
+    } catch { Alerts.error('Error al guardar') }
     finally { setLoading(false) }
   }
 
   const remove = async (id: number) => {
-    if (!confirm('¿Eliminar este servicio?')) return
-    await servicesApi.remove(id); toast.success('Eliminado'); load()
+    if (!(await Alerts.confirm('¿Eliminar este servicio?', 'Se eliminará del catálogo, pero no afectará citas pasadas'))) return
+    try {
+      await servicesApi.remove(id)
+      Alerts.success('Eliminado')
+      load()
+    } catch { Alerts.error('Error al eliminar') }
   }
 
   return (

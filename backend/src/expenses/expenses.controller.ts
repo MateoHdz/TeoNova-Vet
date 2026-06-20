@@ -21,6 +21,8 @@ export class ExpensesController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('category') category?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
   ) {
     let f = from;
     let t = to;
@@ -28,6 +30,9 @@ export class ExpensesController {
       const today = new Date().toISOString().split('T')[0];
       f = today;
       t = today;
+    }
+    if (page && limit) {
+      return this.service.findAllPaginated(cid, f, t, category, +page, +limit);
     }
     return this.service.findAll(cid, f, t, category);
   }

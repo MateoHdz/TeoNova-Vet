@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { petsApi, customersApi } from '../services/api'
 import { Plus, Search, Edit2, Trash2, PawPrint, X } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
+import Pagination from '../components/Pagination'
 
 const EMPTY = { name:'', species:'dog', breed:'', birthdate:'', notes:'', customerId:'' }
 const speciesLabel: any = { dog:'Perro', cat:'Gato', bird:'Ave', rabbit:'Conejo', other:'Otro' }
@@ -17,13 +18,19 @@ export default function PetsPage() {
   const [form, setForm] = useState(EMPTY)
   const [loading, setLoading] = useState(false)
 
-  const load = () => petsApi.list().then(setPets)
-  useEffect(() => { load(); customersApi.list().then(setCustomers) }, [])
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
+  const [total, setTotal] = useState(0)
 
-  const filtered = pets.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.breed||'').toLowerCase().includes(search.toLowerCase())
-  )
+  const load = () => petsApi.list(search, undefined, page, limit).then((res: any) => {
+    setPets(res.data || [])
+    setTotal(res.total || 0)
+  })
+
+  useEffect(() => { setPage(1) }, [search, limit])
+  useEffect(() => { load() }, [search, page, limit])
+
+  useEffect(() => { customersApi.list().then((c: any) => setCustomers(c.data || c)) }, [])
 
   const openCreate = () => { setEditing(null); setForm(EMPTY); setShowModal(true) }
   const openEdit = (p: any) => {
@@ -33,18 +40,29 @@ export default function PetsPage() {
   }
 
   const save = async () => {
-    if (!form.name||!form.customerId) { toast.error('Nombre y dueño requeridos'); return }
+    const missing = []
+    if (!form.customerId) missing.push('Dueño')
+    if (!form.name) missing.push('Nombre')
+    if (missing.length > 0) {
+      Alerts.validationError(missing)
+      return
+    }
+
     setLoading(true)
     try {
       editing ? await petsApi.update(editing.id,form) : await petsApi.create(form)
-      toast.success(editing?'Mascota actualizada':'Mascota registrada')
+      Alerts.success(editing ? 'Mascota actualizada' : 'Mascota registrada')
       setShowModal(false); load()
-    } catch { toast.error('Error') } finally { setLoading(false) }
+    } catch { Alerts.error('Error al guardar mascota') } finally { setLoading(false) }
   }
 
   const remove = async (id: number) => {
-    if (!confirm('¿Eliminar mascota?')) return
-    await petsApi.remove(id); toast.success('Eliminada'); load()
+    if (!(await Alerts.confirm('¿Eliminar mascota?', 'Esta acción no se puede deshacer'))) return
+    try {
+      await petsApi.remove(id)
+      Alerts.success('Eliminada')
+      load()
+    } catch { Alerts.error('Error al eliminar') }
   }
 
   const calcAge = (birthdate: string) => {
@@ -77,8 +95,8 @@ export default function PetsPage() {
       </div>
 
       {/* Grid */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:16 }}>
-        {filtered.map((p:any)=>(
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:16, marginBottom: 24 }}>
+        {pets.map((p:any)=>(
           <div key={p.id} className="card" style={{ padding:'20px', overflow:'hidden' }}>
             {/* Species icon */}
             <div style={{ width:52, height:52, borderRadius:14, background:speciesColor[p.species]||'#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, marginBottom:14 }}>
@@ -106,13 +124,22 @@ export default function PetsPage() {
             </div>
           </div>
         ))}
-        {filtered.length===0&&(
+        {pets.length===0&&(
           <div style={{ gridColumn:'1/-1', textAlign:'center', padding:'60px 0', color:'var(--text3)' }}>
             <PawPrint size={36} style={{ margin:'0 auto 10px', display:'block' }} strokeWidth={1.2}/>
             Sin mascotas registradas
           </div>
         )}
       </div>
+
+      <Pagination
+        currentPage={page}
+        totalPages={Math.ceil(total / limit)}
+        totalItems={total}
+        itemsPerPage={limit}
+        onPageChange={setPage}
+        onItemsPerPageChange={setLimit}
+      />
 
       {showModal&&(
         <div className="modal-overlay">

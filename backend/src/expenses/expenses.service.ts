@@ -32,6 +32,27 @@ export class ExpensesService {
     return qb.getMany();
   }
 
+  async findAllPaginated(clinicId: number, from: string | undefined, to: string | undefined, category: string | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const qb = this.repo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.user', 'user')
+      .where('e.clinicId = :clinicId', { clinicId })
+      .orderBy('e.date', 'DESC')
+      .addOrderBy('e.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (from && to) {
+      qb.andWhere('e.date BETWEEN :from AND :to', { from, to });
+    }
+    if (category) {
+      qb.andWhere('e.category = :category', { category });
+    }
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findOne(id: number, clinicId: number): Promise<Expense> {
     const e = await this.repo.findOne({ where: { id, clinicId }, relations: ['user'] });
     if (!e) throw new NotFoundException('Gasto no encontrado');

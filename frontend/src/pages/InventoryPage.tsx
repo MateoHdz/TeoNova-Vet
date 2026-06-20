@@ -4,7 +4,8 @@ import {
   Plus, Search, Edit2, Trash2, Package, SlidersHorizontal, 
   TrendingUp, AlertTriangle, Activity, X, Tag, ArrowRight, Scale, Calculator
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
+import Pagination from '../components/Pagination'
 import { fmtMoney, fmtUnitPrice, parseDecimalInput, roundPrice } from '../utils/money'
 import { calcFromPackage, calcBulkProfitSummary } from '../utils/bulkUnits'
 
@@ -68,24 +69,30 @@ export default function InventoryPage() {
   const [bulkSaleManual, setBulkSaleManual] = useState(false)
   const bulkSyncSkip = useRef(false)
 
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
+  const [total, setTotal] = useState(0)
+  const [summary, setSummary] = useState<any>({})
+
   const load = () => {
-    productsApi.list(search, lowStockOnly)
-      .then(setProducts)
-      .catch(() => toast.error('Error al conectar con el servidor'))
+    productsApi.list(search, lowStockOnly, category, page, limit)
+      .then((res: any) => {
+        setProducts(res.data || [])
+        setTotal(res.total || 0)
+      })
+      .catch(() => Alerts.error('Error al conectar con el servidor'))
+    productsApi.summary().then(setSummary).catch(() => {})
   }
 
-  useEffect(() => { load() }, [search, lowStockOnly])
-
-  const filtered = products.filter(p =>
-    (category === 'Todas' || p.category === category)
-  )
+  useEffect(() => { setPage(1) }, [search, lowStockOnly, category, limit])
+  useEffect(() => { load() }, [search, lowStockOnly, category, page, limit])
 
   // Dynamic KPI Metric Calculations
-  const totalSKUs = products.length
-  const totalPurchaseValuation = products.reduce((acc, p) => acc + (Number(p.purchasePrice || 0) * Number(p.stock || 0)), 0)
-  const totalSaleValuation = products.reduce((acc, p) => acc + (Number(p.salePrice || 0) * Number(p.stock || 0)), 0)
-  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= p.minStock).length
-  const outOfStockCount = products.filter(p => p.stock === 0).length
+  const totalSKUs = summary.totalSKUs || 0
+  const totalPurchaseValuation = summary.totalPurchaseValuation || 0
+  const totalSaleValuation = summary.totalSaleValuation || 0
+  const lowStockCount = summary.lowStockCount || 0
+  const outOfStockCount = summary.outOfStockCount || 0
 
   const openCreate = () => { 
     setEditing(null)
@@ -116,18 +123,23 @@ export default function InventoryPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name || form.salePrice <= 0) { 
-      toast.error('Nombre y precio de venta válidos requeridos')
-      return 
+    const missing = []
+    if (!form.name) missing.push('Nombre del Producto')
+    if (form.salePrice <= 0) missing.push('Precio de Venta válido')
+    
+    if (missing.length > 0) {
+      Alerts.validationError(missing)
+      return
     }
+
     setLoading(true)
     try {
       editing ? await productsApi.update(editing.id, form) : await productsApi.create(form)
-      toast.success(editing ? 'Producto actualizado' : 'Producto creado')
+      Alerts.success(editing ? 'Producto actualizado' : 'Producto creado')
       setShowModal(false)
       load()
     } catch (e: any) { 
-      toast.error(e.response?.data?.message || 'Error al guardar el producto') 
+      Alerts.error(e.response?.data?.message || 'Error al guardar el producto') 
     } finally { 
       setLoading(false) 
     }
@@ -135,7 +147,7 @@ export default function InventoryPage() {
 
   const handleStockAdjust = async (type: 'in' | 'out' | 'adjustment') => {
     if (stockQty <= 0) {
-      toast.error('Ingresa una cantidad mayor que cero')
+      Alerts.error('Ingresa una cantidad mayor que cero')
       return
     }
     try {
@@ -146,7 +158,7 @@ export default function InventoryPage() {
         ...(type === 'in' && stockNewPurchase ? { newPurchasePrice: parseDecimalInput(stockNewPurchase) } : {}),
         ...(type === 'in' && stockNewSale     ? { newSalePrice:     parseDecimalInput(stockNewSale)     } : {}),
       })
-      toast.success('Stock actualizado correctamente' + (type === 'in' && (stockNewPurchase || stockNewSale) ? ' · Precios actualizados' : ''))
+      Alerts.success('Stock actualizado correctamente' + (type === 'in' && (stockNewPurchase || stockNewSale) ? ' · Precios actualizados' : ''))
       setStockModal(null)
       setStockQty(0)
       setStockNotes('')
@@ -154,7 +166,7 @@ export default function InventoryPage() {
       setStockNewSale('')
       load()
     } catch (e: any) { 
-      toast.error(e.response?.data?.message || 'Error al ajustar el inventario') 
+      Alerts.error(e.response?.data?.message || 'Error al ajustar el inventario') 
     }
   }
 
@@ -433,7 +445,7 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((p: any) => {
+              {products.map((p: any) => {
                 const margin = p.salePrice > 0 ? Math.round(((p.salePrice - p.purchasePrice) / p.salePrice) * 100) : 0
                 const isOutOfStock = p.stock === 0
                 const isLowStock = p.stock > 0 && p.stock <= p.minStock
@@ -580,9 +592,9 @@ export default function InventoryPage() {
                         </button>
                         <button 
                           onClick={async () => { 
-                            if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente ${p.name}?`)) return
+                            if (!(await Alerts.confirm(`¿Eliminar ${p.name}?`, 'Esta acción no se puede deshacer y puede afectar ventas anteriores'))) return
                             await productsApi.remove(p.id)
-                            toast.success('Producto eliminado de catálogo')
+                            Alerts.success('Producto eliminado de catálogo')
                             load() 
                           }} 
                           style={{ background: 'var(--out-bg)', borderRadius: 7, padding: '5px 7px', color: 'var(--out)', cursor: 'pointer' }}
@@ -597,7 +609,7 @@ export default function InventoryPage() {
               })}
               
               {/* Empty state */}
-              {filtered.length === 0 && (
+              {products.length === 0 && (
                 <tr>
                   <td colSpan={9} style={{ padding: '64px 20px', textAlign: 'center', color: 'var(--text3)' }}>
                     <Package size={36} style={{ margin: '0 auto 12px', display: 'block', color: 'var(--text3)' }} strokeWidth={1.2} />
@@ -609,6 +621,14 @@ export default function InventoryPage() {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={page}
+          totalPages={Math.ceil(total / limit)}
+          totalItems={total}
+          itemsPerPage={limit}
+          onPageChange={setPage}
+          onItemsPerPageChange={setLimit}
+        />
       </div>
 
       {/* ── Product Editor Modal ── */}

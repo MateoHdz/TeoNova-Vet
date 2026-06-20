@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { expensesApi } from '../services/api'
 import { Plus, Edit2, Trash2, DollarSign, Search, X, Filter, Utensils, Car, Wrench, ShoppingBag, Zap, Users, Megaphone, FolderOpen, Folder } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import { format, startOfMonth, endOfMonth, subDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { useAuthStore } from '../store/authStore'
@@ -70,25 +70,28 @@ export default function ExpensesPage() {
   }
 
   const save = async () => {
-    if (!form.description || !form.amount || !form.date) {
-      toast.error('Descripción, monto y fecha son requeridos'); return
-    }
-    if (Number(form.amount) <= 0) { toast.error('El monto debe ser mayor a 0'); return }
+    const missing = []
+    if (!form.description) missing.push('Descripción')
+    if (!form.amount) missing.push('Monto')
+    if (!form.date) missing.push('Fecha')
+    if (missing.length > 0) { Alerts.validationError(missing); return }
+    
+    if (Number(form.amount) <= 0) { Alerts.error('El monto debe ser mayor a 0'); return }
     setLoading(true)
     try {
       const payload = { ...form, amount: Number(form.amount) }
       editing ? await expensesApi.update(editing.id, payload) : await expensesApi.create(payload)
-      toast.success(editing ? 'Gasto actualizado' : 'Gasto registrado')
+      Alerts.success(editing ? 'Gasto actualizado' : 'Gasto registrado')
       setShowModal(false); load()
-    } catch (e: any) { toast.error(e.response?.data?.message || 'Error') }
+    } catch (e: any) { Alerts.error(e.response?.data?.message || 'Error') }
     finally { setLoading(false) }
   }
 
   const remove = async (id: number) => {
-    if (!confirm('¿Eliminar este gasto?')) return
+    if (!(await Alerts.confirm('¿Eliminar este gasto?', 'Se eliminará del registro y alterará el saldo final'))) return
     try {
-      await expensesApi.remove(id); toast.success('Gasto eliminado'); load()
-    } catch { toast.error('Error al eliminar') }
+      await expensesApi.remove(id); Alerts.success('Gasto eliminado'); load()
+    } catch { Alerts.error('Error al eliminar') }
   }
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount), 0)

@@ -409,7 +409,7 @@ export default function AutocompleteSearch({
                       {iconType === 'customer' && <span>📞 {highlightMatch(String(item[sublabelKey]), search)}</span>}
                       {iconType === 'product' && 'sku' in item && item.sku && <span>SKU: {highlightMatch(String(item[sublabelKey]), search)}</span>}
                       {iconType === 'pet' && 'species' in item && <span>Raza/Especie: {highlightMatch(String(item[sublabelKey]), search)}</span>}
-                      {(!['customer', 'product', 'pet'].includes(iconType || '') || !('sku' in item || 'species' in item)) && (
+                      {iconType !== 'customer' && (!['product', 'pet'].includes(iconType || '') || !('sku' in item || 'species' in item)) && (
                         <span>{highlightMatch(String(item[sublabelKey]), search)}</span>
                       )}
                     </div>

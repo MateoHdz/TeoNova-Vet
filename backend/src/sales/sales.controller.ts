@@ -15,7 +15,9 @@ export class SalesController {
     @CurrentUser() user: any,
     @Query('from') from?: string,
     @Query('to') to?: string,
-    @Query('customerId') cusId?: string
+    @Query('customerId') cusId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
   ) {
     let f = from;
     let t = to;
@@ -23,6 +25,9 @@ export class SalesController {
       const today = new Date().toISOString().split('T')[0];
       f = today;
       t = today;
+    }
+    if (page && limit) {
+      return this.service.findAllPaginated(cid, f, t, cusId ? +cusId : undefined, +page, +limit);
     }
     return this.service.findAll(cid, f, t, cusId ? +cusId : undefined);
   }

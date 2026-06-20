@@ -6,7 +6,7 @@ import {
   CheckCircle2, UserX, Crown, Briefcase, UserCog, Filter,
   RefreshCw, Building2,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
@@ -109,28 +109,28 @@ export default function SecurityPage() {
     try {
       if (u.isActive) {
         await usersApi.suspend(u.id)
-        toast.success(`${u.name} suspendido`)
+        Alerts.success(`${u.name} suspendido`)
       } else {
         await usersApi.activate(u.id)
-        toast.success(`${u.name} activado`)
+        Alerts.success(`${u.name} activado`)
       }
       setUsers(prev => prev.map(x => x.id === u.id ? { ...x, isActive: !u.isActive } : x))
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al cambiar estado')
+      Alerts.error(e.response?.data?.message || 'Error al cambiar estado')
     }
   }
 
   const handleResetPassword = async () => {
     if (!pwdModal) return
-    if (pwdValue.length < 8) { toast.error('La contraseña debe tener al menos 8 caracteres'); return }
-    if (pwdValue !== pwdConfirm) { toast.error('Las contraseñas no coinciden'); return }
+    if (pwdValue.length < 8) { Alerts.error('La contraseña debe tener al menos 8 caracteres'); return }
+    if (pwdValue !== pwdConfirm) { Alerts.error('Las contraseñas no coinciden'); return }
     setActionLoading(true)
     try {
       await usersApi.resetPassword(pwdModal.id, pwdValue)
-      toast.success(`Contraseña de ${pwdModal.name} actualizada`)
+      Alerts.success(`Contraseña de ${pwdModal.name} actualizada`)
       setPwdModal(null); setPwdValue(''); setPwdConfirm(''); setShowPwd(false)
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al cambiar contraseña')
+      Alerts.error(e.response?.data?.message || 'Error al cambiar contraseña')
     } finally { setActionLoading(false) }
   }
 
@@ -139,11 +139,11 @@ export default function SecurityPage() {
     setActionLoading(true)
     try {
       await usersApi.permanentDelete(delModal.id)
-      toast.success(`Usuario ${delModal.name} eliminado`)
+      Alerts.success(`Usuario ${delModal.name} eliminado`)
       setUsers(prev => prev.filter(u => u.id !== delModal.id))
       setDelModal(null)
     } catch (e: any) {
-      toast.error(e.response?.data?.message || 'Error al eliminar usuario')
+      Alerts.error(e.response?.data?.message || 'Error al eliminar usuario')
     } finally { setActionLoading(false) }
   }
 

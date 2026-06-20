@@ -26,6 +26,24 @@ export class SalesService {
     return qb.getMany();
   }
 
+  async findAllPaginated(clinicId: number, from: string | undefined, to: string | undefined, customerId: number | undefined, page: number, limit: number) {
+    const skip = (page - 1) * limit;
+    const qb = this.saleRepo.createQueryBuilder('sale')
+      .leftJoinAndSelect('sale.customer','customer')
+      .leftJoinAndSelect('sale.pet','pet')
+      .leftJoinAndSelect('sale.user','user')
+      .leftJoinAndSelect('sale.items','items')
+      .where('sale.clinicId = :clinicId AND sale.status = :status', { clinicId, status:'completed' })
+      .orderBy('sale.soldAt','DESC')
+      .skip(skip)
+      .take(limit);
+    if (from && to) qb.andWhere('sale.soldAt BETWEEN :from AND :to', { from: new Date(from), to: new Date(to+'T23:59:59') });
+    if (customerId) qb.andWhere('sale.customerId = :customerId', { customerId });
+    
+    const [data, total] = await qb.getManyAndCount();
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+  }
+
   async findOne(id: number, clinicId: number): Promise<Sale> {
     const sale = await this.saleRepo.findOne({
       where: { id, clinicId },

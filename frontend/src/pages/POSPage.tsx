@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { productsApi, servicesApi, customersApi, petsApi, salesApi, appointmentsApi } from '../services/api'
 import { Search, Plus, Minus, Trash2, ShoppingCart, Package, Scissors, Check, Coins, ChevronDown, X, Receipt } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import AutocompleteSearch from '../components/AutocompleteSearch'
@@ -84,7 +84,7 @@ export default function POSPage() {
         setSelectedPet(null)
         
         // Fetch pets for preloaded customer and select the correct one
-        petsApi.list(customer.id).then((customerPets) => {
+        petsApi.list(undefined, customer.id).then((customerPets) => {
           setPets(customerPets)
           const matchingPet = customerPets.find((p: any) => p.id === Number(checkout.petId))
           if (matchingPet) setSelectedPet(matchingPet)
@@ -109,7 +109,7 @@ export default function POSPage() {
         }
       ])
 
-      toast.success('Servicio precargado desde la agenda')
+      Alerts.success('Servicio precargado desde la agenda')
       
       // Clear route state to prevent reload on refresh
       navigate('.', { replace: true, state: null })
@@ -138,7 +138,7 @@ export default function POSPage() {
 
   const addProduct = (p: any) => {
     if (Number(p.stock) === 0) {
-      toast.error(`${p.name} está agotado`)
+      Alerts.error(`${p.name} está agotado`)
       return
     }
     // Bulk products: open quantity modal instead of instant add
@@ -147,16 +147,22 @@ export default function POSPage() {
       return
     }
     const key = `product-${p.id}`
+    
+    const ex = cart.find((i) => i.key === key)
+    if (ex && ex.quantity >= Number(p.stock)) {
+      Alerts.error(`Stock máximo disponible: ${p.stock}`)
+      return
+    }
+
+    if (!ex) {
+      Alerts.success(`${p.name} agregado al carrito`)
+    }
+
     setCart((prev) => {
-      const ex = prev.find((i) => i.key === key)
-      if (ex) {
-        if (ex.quantity >= Number(p.stock)) {
-          toast.error(`Stock máximo disponible: ${p.stock}`)
-          return prev
-        }
+      const existing = prev.find((i) => i.key === key)
+      if (existing) {
         return prev.map((i) => (i.key === key ? { ...i, quantity: i.quantity + 1 } : i))
       }
-      toast.success(`${p.name} agregado al carrito`, { duration: 800 })
       return [
         ...prev,
         {
@@ -178,11 +184,11 @@ export default function POSPage() {
     const { product } = bulkModal
     const qty = parseDecimalInput(String(bulkModal.qty))
     if (!qty || qty <= 0) {
-      toast.error('Ingresa una cantidad válida')
+      Alerts.error('Ingresa una cantidad válida')
       return
     }
     if (qty > Number(product.stock)) {
-      toast.error(`Stock disponible: ${product.stock} ${product.saleUnit || 'kg'}`)
+      Alerts.error(`Stock disponible: ${product.stock} ${product.saleUnit || 'kg'}`)
       return
     }
     const key = `product-${product.id}-${Date.now()}` // unique per bulk entry
@@ -199,7 +205,7 @@ export default function POSPage() {
       },
     ])
     setBulkModal(null)
-    toast.success(`${product.name} agregado al carrito`, { duration: 800 })
+    Alerts.success(`${product.name} agregado al carrito`)
   }
 
   const addService = (s: any) => {
@@ -220,7 +226,7 @@ export default function POSPage() {
         purchasePrice: 0,
       },
     ])
-    toast.success(`${s.name} agregado al carrito`, { duration: 800 })
+    Alerts.success(`${s.name} agregado al carrito`)
   }
 
   const updateQty = (key: string, delta: number) =>
@@ -233,7 +239,7 @@ export default function POSPage() {
           if (i.itemType === 'product' && delta > 0) {
             const prod = products.find((p) => p.id === i.id)
             if (prod && newQty > prod.stock) {
-              toast.error(`Stock máximo disponible: ${prod.stock}`)
+              Alerts.error(`Stock máximo disponible: ${prod.stock}`)
               return i
             }
           }
@@ -253,7 +259,7 @@ export default function POSPage() {
   const selectCustomer = (c: any) => {
     setSelectedCustomer(c)
     setSelectedPet(null)
-    petsApi.list(c.id).then(setPets).catch(() => {})
+    petsApi.list(undefined, c.id).then(setPets).catch(() => {})
   }
 
   const clearCustomer = () => {
@@ -267,12 +273,12 @@ export default function POSPage() {
     setPreloadedDetails(null)
     setCart([])
     clearCustomer()
-    toast.success('Servicio precargado cancelado')
+    Alerts.success('Servicio precargado cancelado')
   }
 
   const handleSale = async () => {
     if (cart.length === 0) {
-      toast.error('El carrito está vacío')
+      Alerts.error('El carrito está vacío')
       return
     }
     setLoading(true)
@@ -305,7 +311,7 @@ export default function POSPage() {
         }
       }
 
-      toast.success('¡Venta registrada con éxito!')
+      Alerts.success('¡Venta registrada con éxito!')
       setCart([])
       setDiscount(0)
       setCashReceived(0)
@@ -315,7 +321,7 @@ export default function POSPage() {
       loadCatalog()
     } catch (e: any) {
       const msg = e.response?.data?.message || 'Error al registrar venta'
-      toast.error(Array.isArray(msg) ? msg[0] : msg)
+      Alerts.error(Array.isArray(msg) ? msg[0] : msg)
     } finally {
       setLoading(false)
     }
@@ -459,18 +465,19 @@ export default function POSPage() {
           }}
         >
           {filteredCatalog.map((item: any) => {
-            const outOfStock = tab === 'products' && item.stock === 0
+            const stockAmount = Number(item.stock)
+            const outOfStock = tab === 'products' && stockAmount === 0
             const cartItemKey = tab === 'products' ? `product-${item.id}` : `service-${item.id}`
             const cartQty = cart.filter((c) => c.itemType === tab.slice(0, -1) && c.id === item.id).reduce((acc, curr) => acc + curr.quantity, 0)
-            const lowStock = tab === 'products' && item.stock <= item.min_stock
+            const lowStock = tab === 'products' && stockAmount <= Number(item.min_stock)
 
             return (
               <div
                 key={item.id}
                 onClick={() => (tab === 'products' ? addProduct(item) : addService(item))}
                 style={{
-                  background: 'var(--surface)',
-                  border: cartQty > 0 ? '1.8px solid var(--green)' : '1px solid var(--border)',
+                  background: outOfStock ? 'var(--out-bg)' : 'var(--surface)',
+                  border: cartQty > 0 ? '1.8px solid var(--green)' : outOfStock ? '1px solid #fecaca' : '1px solid var(--border)',
                   borderRadius: '14px',
                   padding: '14px',
                   cursor: outOfStock ? 'not-allowed' : 'pointer',
@@ -525,8 +532,10 @@ export default function POSPage() {
                       }}
                     >
                       {outOfStock ? 'Agotado' : item.isBulk 
-                        ? `${Number(item.stock).toLocaleString('es-CO', { maximumFractionDigits: 2 })} ${item.saleUnit || 'kg'}`
-                        : `Stock: ${item.stock}`}
+                        ? (item.saleUnit === 'g' 
+                            ? `${(stockAmount / 1000).toLocaleString('es-CO', { maximumFractionDigits: 3 })} kg`
+                            : `${stockAmount.toLocaleString('es-CO', { maximumFractionDigits: 2 })} ${item.saleUnit || 'kg'}`)
+                        : `Stock: ${Math.floor(stockAmount)}`}
                     </span>
                   )}
                 </div>
@@ -632,21 +641,6 @@ export default function POSPage() {
               <ShoppingCart size={18} color="var(--green)" />
               <span style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)' }}>Carrito de Compra</span>
             </div>
-            {cart.length > 0 && (
-              <span
-                style={{
-                  background: 'var(--green-xlight)',
-                  color: 'var(--green-dark)',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  border: '1px solid rgba(16, 185, 129, 0.15)',
-                }}
-              >
-                {cart.reduce((acc, i) => acc + i.quantity, 0)} items
-              </span>
-            )}
           </div>
 
           {/* Autocomplete Customer Search */}
@@ -784,7 +778,7 @@ export default function POSPage() {
                   <button
                     onClick={() => {
                       setCart((p) => p.filter((i) => i.key !== item.key))
-                      toast.success('Removido del carrito', { duration: 600 })
+                      Alerts.success('Removido del carrito')
                     }}
                     style={{ color: 'var(--text3)', padding: 4, borderRadius: '6px', cursor: 'pointer', transition: 'all 0.15s ease' }}
                     onMouseEnter={(e) => (e.currentTarget.style.color = '#ef4444')}
@@ -1058,7 +1052,7 @@ export default function POSPage() {
               },
             ])
             setBoardingModal(null)
-            toast.success('Hospedaje de guardería agregado')
+            Alerts.success('Hospedaje de guardería agregado')
           }}
           onClose={() => setBoardingModal(null)}
         />

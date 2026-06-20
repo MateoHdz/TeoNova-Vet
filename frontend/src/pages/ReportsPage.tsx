@@ -7,7 +7,7 @@ import {
   CartesianGrid, PieChart, Pie, Cell, Legend, LineChart, Line
 } from 'recharts'
 import { ShoppingCart, TrendingUp, DollarSign, Scissors, Download, TrendingDown, Loader2 } from 'lucide-react'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n || 0)
@@ -69,7 +69,7 @@ export default function ReportsPage() {
       setPayMethods(pay.map((p: any) => ({ name: p.method, value: Number(p.total) || 0 })))
       setExpSummary(exps)
     } catch (e: any) {
-      toast.error('Error cargando reportes')
+      Alerts.error('Error cargando reportes')
     } finally {
       setLoading(false)
     }
@@ -85,8 +85,8 @@ export default function ReportsPage() {
     setExporting(true)
     try {
       await exportExcel(from, to)
-      toast.success('Excel descargado correctamente')
-    } catch { toast.error('Error al generar Excel') }
+      Alerts.success('Excel descargado correctamente')
+    } catch { Alerts.error('Error al generar Excel') }
     finally { setExporting(false) }
   }
 

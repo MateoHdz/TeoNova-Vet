@@ -9,7 +9,18 @@ import { AppointmentStatus } from './appointment.entity';
 @UseGuards(JwtAuthGuard, ClinicOnlyGuard)
 export class AppointmentsController {
   constructor(private readonly service: AppointmentsService) {}
-  @Get()              findAll(@ClinicId() cid: number, @Query('from') from?: string, @Query('to') to?: string, @Query('status') status?: AppointmentStatus) { return this.service.findAll(cid,from,to,status); }
+  @Get()
+  findAll(
+    @ClinicId() cid: number,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('status') status?: AppointmentStatus,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string
+  ) {
+    if (page && limit) return this.service.findAllPaginated(cid, from, to, status, +page, +limit);
+    return this.service.findAll(cid, from, to, status);
+  }
   @Get('today-summary') todaySummary(@ClinicId() cid: number, @Query('from') from?: string, @Query('to') to?: string) { return this.service.getTodaySummary(cid, from, to); }
   @Get(':id')         findOne(@Param('id') id: string, @ClinicId() cid: number) { return this.service.findOne(+id,cid); }
   @Post()             create(@Body() body: any, @CurrentUser() user: any) { return this.service.create(body,user.userId,user.clinicId); }

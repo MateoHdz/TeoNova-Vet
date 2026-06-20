@@ -4,7 +4,8 @@ import { useAuthStore } from '../store/authStore'
 import { Eye, Receipt, X, Calendar, DollarSign, ArrowUpRight, ArrowDownRight, Download, Users, CreditCard, User, Filter, Folder, XCircle } from 'lucide-react'
 import { format, subDays, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
-import toast from 'react-hot-toast'
+import { Alerts } from '../utils/alerts'
+import Pagination from '../components/Pagination'
 
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n)
@@ -39,6 +40,9 @@ export default function SalesPage() {
   const [detail, setDetail] = useState<any>(null)
   const [selectedMovement, setSelectedMovement] = useState<any>(null)
 
+  const [page, setPage] = useState(1)
+  const [limit, setLimit] = useState(25)
+
   // Load all users for the filter dropdown
   useEffect(() => {
     usersApi.list()
@@ -63,7 +67,7 @@ export default function SalesPage() {
       })
       setMovements(data)
     } catch (err: any) {
-      toast.error('Error al cargar movimientos financieros')
+      Alerts.error('Error al cargar movimientos financieros')
     } finally {
       setLoading(false)
     }
@@ -72,6 +76,10 @@ export default function SalesPage() {
   useEffect(() => {
     load(from, to)
   }, [from, to, type, userId, paymentMethod])
+
+  useEffect(() => {
+    setPage(1)
+  }, [from, to, type, userId, paymentMethod, limit])
 
   // Force date range to today if employee on mount or whenever role changes
   useEffect(() => {
@@ -103,6 +111,12 @@ export default function SalesPage() {
   const totalIncomes = movements.reduce((s, m) => s + Number(m.entry || 0), 0)
   const totalExpenses = movements.reduce((s, m) => s + Number(m.exit || 0), 0)
   const netUtility = totalIncomes - totalExpenses
+
+  const total = movements.length
+  const paginatedMovements = useMemo(() => {
+    const start = (page - 1) * limit
+    return movements.slice(start, start + limit)
+  }, [movements, page, limit])
 
   // Formato local basado en ISO standard
   const formatLocalTime = (isoString?: string): string => {
@@ -140,9 +154,9 @@ export default function SalesPage() {
   const handleExportExcel = async () => {
     try {
       await exportExcel(from, to)
-      toast.success('Excel exportado correctamente')
+      Alerts.success('Excel exportado correctamente')
     } catch (err) {
-      toast.error('Error al exportar Excel')
+      Alerts.error('Error al exportar Excel')
     }
   }
 
@@ -154,7 +168,7 @@ export default function SalesPage() {
         const fullSale = await salesApi.get(m.originalId)
         setDetail(fullSale)
       } catch (err) {
-        toast.error('No se pudo cargar el detalle de la venta')
+        Alerts.error('No se pudo cargar el detalle de la venta')
       }
     } else {
       // For expense, we have all information in the movement itself
@@ -163,14 +177,14 @@ export default function SalesPage() {
   }
 
   const cancelSale = async (id: number) => {
-    if (!confirm('¿Seguro que deseas cancelar esta venta? Se restaurará el stock de los productos.')) return
+    if (!(await Alerts.confirm('¿Cancelar esta venta?', 'Se restaurará el stock de los productos y se anulará el ingreso'))) return
     try {
       await salesApi.cancel(id)
-      toast.success('Venta cancelada correctamente')
+      Alerts.success('Venta cancelada correctamente')
       setDetail(null)
       load(from, to)
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al cancelar la venta')
+      Alerts.error(err.response?.data?.message || 'Error al cancelar la venta')
     }
   }
 
@@ -412,7 +426,7 @@ export default function SalesPage() {
                 </tr>
               </thead>
               <tbody>
-                {movements.map((m: any) => {
+                {paginatedMovements.map((m: any) => {
                   const isIncome = m.entry > 0
                   
                   return (
@@ -527,6 +541,16 @@ export default function SalesPage() {
               </tbody>
             </table>
           </div>
+        )}
+        {!loading && movements.length > 0 && (
+          <Pagination
+            currentPage={page}
+            totalPages={Math.ceil(total / limit)}
+            totalItems={total}
+            itemsPerPage={limit}
+            onPageChange={setPage}
+            onItemsPerPageChange={setLimit}
+          />
         )}
       </div>
 
